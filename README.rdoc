@@ -33,7 +33,8 @@ grandmother would disapprove of. You can expect it to keep on keepin' on.
     end
 
     def new
-      # parent is 
+      # parent is automatically determined as either blog or category depending
+      # on the route we used to get here.
       @post = parent.posts.build
     end
 
