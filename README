@@ -1,0 +1,58 @@
+= automatic_resources
+
+Anyone who's had to deal with nested resources knows that it can get really
+messy to have to make everything conditional to support them. Basically it's
+just a pain in the ass. If you want to support a nesting structure like the one
+in the example below you'll be looking at a big tangled bowl of spaghetti in no
+time.
+
+Automatic Resources saves you the trouble. It dynamically defines finder
+methods in your controllers and helpers as well as simple named urls that are
+100% compatible with the standard ones but produce beautiful nested resource
+urls just like you should expect them to.
+
+== Compatible
+
+Automatic Resources doesn't delve into Rails internals or do anything your
+grandmother would disapprove of. You can expect it to keep on keepin' on.
+
+== Example
+
+map.resources :blogs do |blog|
+  blog.resources :categories, :has_many => [:posts]
+  blog.resources :posts
+end
+
+class ItemsController < ApplicationController
+  automatic_resources :blog, :category, :post
+
+  def show
+    @blog_name = blog.name if blog?
+    @category_name = category.name if category?
+    @title = post.title
+  end
+
+  def new
+    # parent is 
+    @post = parent.posts.build
+  end
+
+  def update
+    if post.update_attributes(params[:post])
+      flash[:notice] = 'Item was successfully updated.'
+      redirect_to(post) 
+    else
+      render :action => "edit" 
+    end
+  end
+end
+
+<% form_for(item) do |f| %>
+  Name: <%= f.text_field :name %>
+<% end %>
+<%= link_to 'Show', item %> |
+<%= link_to 'Back', items_path %>
+
+== License
+
+Copyright (c) 2009 Darrick Wiebe, released under the MIT license
