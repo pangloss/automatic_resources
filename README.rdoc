@@ -26,21 +26,49 @@ grandmother would disapprove of. You can expect it to keep on keepin' on.
   class PostsController < ApplicationController
     automatic_resources :blog, :category, :post
 
+    # Add a prepend_before_filter that ensures that the blog resource exists, otherwise
+    # call +record_not_found+
+    require_resource :blog, :filter_method => :prepend_before_filter
+
+    # This resource is required to be valid if it is in the url, otherwise it
+    # is not required. Defaults to using the before_filter if :filter_method is
+    # not specified.
+    sometimes_require_resource :category
+
+    # All other options are passed on to the selected filter method.
+    require_resource :post, :only => [:show, :update]
+
+    # Normal filter methods are created and used so they can be handled in the
+    # usual way:
+    skip_before_filter :sometimes_require_category_filter
+
     def show
+      # blog, category, post methods are generated and available as helpers
       @blog_name = blog.name if blog?
       @category_name = category.name if category?
       @title = post.title
+
+      # blogs, categories, posts collection methods as well:
+      @category_names = categories.map(&:name) if category?
+      @post_dates = posts.map(&:created_on)
+
+      # Passing a collection method false for the execute parameter returns the
+      # correctly scoped collection object without executing find(:all), which
+      # allows you to apply other operations instead:
+      @blog_count = blogs(false).count
     end
 
     def new
       # parent is automatically determined as either blog or category depending
       # on the route we used to get here.
-      @post = parent.posts.build
+      @post = build_post
     end
 
     def update
       if post.update_attributes(params[:post])
         flash[:notice] = 'Item was successfully updated.'
+        # The correctly nested path will be produced automatially without
+        # explicitly specifying it:
         redirect_to(post) 
       else
         render :action => "edit" 
