@@ -128,6 +128,20 @@ module AutomaticResources
     target.extend(CustomizationMethods)
     target.extend(Filters)
 
+    method = "build_#{ target.finder_method_name_for_resource(target.controller_resource) }"
+    target.module_eval(<<-END)
+      def #{method}(*args)
+        klass = scope(self.class.controller_resource)
+        if klass == self.class.class_for_resource(self.class.controller_resource)
+          klass.new(*args)
+        else
+          klass.build(*args)
+        end
+      end
+      helper_method :#{method}
+      protected :#{method}
+    END
+
     target.resources.each do |resource|
       method = target.finder_method_name_for_resource(resource)
       var_name = target.var_name_for_resource(resource)
@@ -277,7 +291,7 @@ module AutomaticResources
     object(parent_resource)
   end
 
-  def object(resource = controller_resource)
+  def object(resource)
     scope(resource).send(self.class.finder_method_on_resource(resource), resource_finder_param(resource))
   end
 
@@ -285,7 +299,7 @@ module AutomaticResources
     self.class.scope_names_for_resource(resource)
   end
 
-  def scope(resource = controller_resource)
+  def scope(resource)
     scope = nil
     if parent = parent_resource(resource)
       scope = send(self.class.finder_method_name_for_resource(parent))
@@ -325,7 +339,7 @@ module AutomaticResources
       # This only happens if we have no parent resources. It's basically just
       # bypassing the original named url (because it's been overwritten)
       opts = args.extract_options!
-      opts[:id] = args unless args.empty?
+      opts[:id] = args.to_param unless args.empty?
       url_for(send("hash_for_#{ method }", opts))
     else
       send(method, *args)
