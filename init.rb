@@ -126,9 +126,10 @@ module AutomaticResources
 
     target.resources.each do |resource|
       method = target.finder_method_name_for_resource(resource)
+      var_name = target.var_name_for_resource(resource)
       target.module_eval(<<-END)
         def #{method}
-          #{target.var_name_for_resource(resource)} ||= object('#{resource}')
+          #{var_name} ||= object('#{resource}')
         end
         helper_method :#{method}
         protected :#{method}
@@ -238,6 +239,7 @@ module AutomaticResources
   end
 
   def parent_resource(above = nil)
+    above = nil if above == self.class.controller_resource
     self.class.resources[0...-1].reverse.find do |resource| 
       if above
         above = nil if resource == above
