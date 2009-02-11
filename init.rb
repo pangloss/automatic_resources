@@ -123,6 +123,7 @@ module AutomaticResources
   def self.included(target)
     target.extend(ClassMethods)
     target.extend(CustomizationMethods)
+    target.extend(Filters)
 
     target.resources.each do |resource|
       method = target.finder_method_name_for_resource(resource)
@@ -153,6 +154,16 @@ module AutomaticResources
         helper_method :#{method}
         protected :#{method}
       END
+
+      ['require', 'sometimes_require'].each do |prefix|
+        method = "#{ prefix }_#{ resource.underscore }_filter"
+        target.module_eval(<<-END)
+          def #{method}
+            #{prefix}_resource_filter('#{resource}')
+          end
+          protected :#{method}
+        END
+      end
     end
     
     # Don't generate urls if there aren't nested resources because they are
@@ -196,9 +207,43 @@ module AutomaticResources
     def resources
       @resources
     end
+
+  end
+
+  module Filters
+    def require_resource(resource, options = {})
+      filter_method = options.delete(:filter_method) || :before_filter
+      send(filter_method, "require_#{ resource }_filter".to_sym, options)
+    end
+
+    # Require a resource only if it is included in the url.
+    def sometimes_require_resource(resource, options = {})
+      filter_method = options.delete(:filter_method) || :before_filter
+      send(filter_method, "sometimes_require_#{ resource }_filter".to_sym, options)
+    end
   end
 
   private
+
+  def require_resource_filter(resource)
+    if object(resource)
+      true
+    else
+      record_not_found
+    end
+  end
+
+  def sometimes_require_resource_filter(resource)
+    if has_resource?(resource)
+      if object(resource)
+        true
+      else
+        record_not_found
+      end
+    else
+      true
+    end
+  end
 
   def resource_param(resource)
     params[self.class.param_name_for_resource(resource)]
