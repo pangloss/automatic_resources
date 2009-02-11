@@ -18,40 +18,40 @@ grandmother would disapprove of. You can expect it to keep on keepin' on.
 
 == Example
 
-map.resources :blogs do |blog|
-  blog.resources :categories, :has_many => [:posts]
-  blog.resources :posts
-end
-
-class ItemsController < ApplicationController
-  automatic_resources :blog, :category, :post
-
-  def show
-    @blog_name = blog.name if blog?
-    @category_name = category.name if category?
-    @title = post.title
+  map.resources :blogs do |blog|
+    blog.resources :categories, :has_many => [:posts]
+    blog.resources :posts
   end
 
-  def new
-    # parent is 
-    @post = parent.posts.build
-  end
+  class PostsController < ApplicationController
+    automatic_resources :blog, :category, :post
 
-  def update
-    if post.update_attributes(params[:post])
-      flash[:notice] = 'Item was successfully updated.'
-      redirect_to(post) 
-    else
-      render :action => "edit" 
+    def show
+      @blog_name = blog.name if blog?
+      @category_name = category.name if category?
+      @title = post.title
+    end
+
+    def new
+      # parent is 
+      @post = parent.posts.build
+    end
+
+    def update
+      if post.update_attributes(params[:post])
+        flash[:notice] = 'Item was successfully updated.'
+        redirect_to(post) 
+      else
+        render :action => "edit" 
+      end
     end
   end
-end
 
-<% form_for(item) do |f| %>
-  Name: <%= f.text_field :name %>
-<% end %>
-<%= link_to 'Show', item %> |
-<%= link_to 'Back', items_path %>
+  <% form_for(item) do |f| %>
+    Name: <%= f.text_field :name %>
+  <% end %>
+  <%= link_to 'Show', item %> |
+  <%= link_to 'Back', items_path %>
 
 == License
 

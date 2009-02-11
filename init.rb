@@ -6,7 +6,9 @@ module AutomaticResourcesBootstrap
   end
 end
 
-ApplicationController.extend(AutomaticResourcesBootstrap)
+if defined?(ActionController::Base)
+  ActionController::Base.extend(AutomaticResourcesBootstrap)
+end
 
 module AutomaticResources
   # Settings more likely to need to be changed I've put nearer the top.
