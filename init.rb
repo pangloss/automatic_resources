@@ -148,8 +148,17 @@ module AutomaticResources
       method = target.collection_method_name_for_resource(resource)
       var_name = target.var_name_for_collection(resource)
       target.module_eval(<<-END)
-        def #{method}
-          #{var_name} ||= scope('#{resource}').all
+        # The +execute+ option runs the query and caches the result. Without it
+        # the scope is returned unexecuted which depending on what the scope is
+        # may or may not be an array (proxy) which can be iterated over.  By
+        # not executing the scope, further scoping or finder methods can be
+        # applied to it before it is executed.
+        def #{method}(execute = true)
+          if execute
+            #{var_name} ||= scope('#{resource}').all
+          else
+            scope('#{resource}')
+          end
         end
         helper_method :#{method}
         protected :#{method}
@@ -269,15 +278,20 @@ module AutomaticResources
     scope(resource).send(self.class.finder_method_on_resource(resource), resource_param(resource))
   end
 
+  def scope_names_for_resource(resource)
+    self.class.scope_names_for_resource(resource)
+  end
+
   def scope(resource = controller_resource)
     scope = nil
     if parent = parent_resource(resource)
       scope = send(self.class.finder_method_name_for_resource(parent))
-      scope = scope.send(self.class.collection_method_on_resource(resource))
+      scope = scope.send(self.class.collection_method_on_resource(resource), false)
     else
       scope = self.class.class_for_resource(resource)
     end
-    scope = self.class.scope_names_for_resource(resource).inject(scope) do |result, scope_name|
+    scopes = [*scope_names_for_resource(resource)].compact
+    scope = scopes.inject(scope) do |result, scope_name|
       result.send(scope_name)
     end
     scope
