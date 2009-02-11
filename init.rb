@@ -1,5 +1,8 @@
 module AutomaticResourcesBootstrap
   def automatic_resources(*resources, &block)
+    if resources.last.to_s != controller_name.singularize
+      puts "\nWarning: Automatic Resources primary resource on the #{ controller_name } controller is defined as #{ resources.last.inspect }."
+    end
     @resources = resources.map { |r| r.to_s }
     include AutomaticResources
     instance_eval(&block) if block_given?
@@ -34,7 +37,7 @@ module AutomaticResources
     # The the parameter to use when finding this resource.
     # ie. if we set it to 'isbn':
     #     User.find(params[:isbn])
-    def param_name_for_resource(resource)
+    def finder_param_name_for_resource(resource)
       if resource == controller_resource
         'id'
       else
@@ -254,8 +257,8 @@ module AutomaticResources
     end
   end
 
-  def resource_param(resource)
-    params[self.class.param_name_for_resource(resource)]
+  def resource_finder_param(resource)
+    params[self.class.finder_param_name_for_resource(resource)]
   end
 
   def active_resources
@@ -266,7 +269,7 @@ module AutomaticResources
     if resource == self.class.controller_resource
       true
     else
-      not params[self.class.param_name_for_resource(resource)].blank?
+      not resource_finder_param(resource).blank?
     end
   end
 
@@ -275,7 +278,7 @@ module AutomaticResources
   end
 
   def object(resource = controller_resource)
-    scope(resource).send(self.class.finder_method_on_resource(resource), resource_param(resource))
+    scope(resource).send(self.class.finder_method_on_resource(resource), resource_finder_param(resource))
   end
 
   def scope_names_for_resource(resource)
