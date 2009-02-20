@@ -128,6 +128,8 @@ module AutomaticResources
     target.extend(CustomizationMethods)
     target.extend(Filters)
 
+    target.helper_method :parent
+
     method = "build_#{ target.finder_method_name_for_resource(target.controller_resource) }"
     target.module_eval(<<-END)
       def #{method}(*args)
