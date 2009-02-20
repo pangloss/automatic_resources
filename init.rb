@@ -197,33 +197,49 @@ module AutomaticResources
     # Don't generate urls if there aren't nested resources because they are
     # already defined by config/routes.rb if it's a simple controller set up
     # correctly.
-    if target.resources.length > 1
-      [nil, 'formatted'].each do |formatted|
-        ['path', 'url'].each do |suffix|
-          route_part = target.route_part_for_resource(target.controller_resource)
-          plural_route_part = target.plural_route_part_for_resource(target.controller_resource)
-          target.module_eval(<<-END)
-            def #{[formatted, route_part, suffix].compact.join('_')}(item, *args)
-              generate_url(#{formatted.inspect}, nil, '#{route_part}', '#{suffix}', item, args)
-            end
-            def #{[formatted, 'edit', route_part, suffix].compact.join('_')}(item, *args)
-              generate_url(#{formatted.inspect}, 'edit', '#{route_part}', '#{suffix}', item, args)
-            end
-            def #{[formatted, 'new', route_part, suffix].compact.join('_')}(*args)
-              generate_url(#{formatted.inspect}, 'new', '#{route_part}', '#{suffix}', nil, args)
-            end
-            def #{[formatted, plural_route_part, suffix].compact.join('_')}(*args)
-              generate_url(#{formatted.inspect}, nil, '#{plural_route_part}', '#{suffix}', nil, args)
-            end
-            helper_method :#{[formatted, route_part, suffix].compact.join('_')}
-            helper_method :#{[formatted, 'edit', route_part, suffix].compact.join('_')}
-            helper_method :#{[formatted, 'new', route_part, suffix].compact.join('_')}
-            helper_method :#{[formatted, plural_route_part, suffix].compact.join('_')}
-            protected :#{[formatted, route_part, suffix].compact.join('_')}
-            protected :#{[formatted, 'edit', route_part, suffix].compact.join('_')}
-            protected :#{[formatted, 'new', route_part, suffix].compact.join('_')}
-            protected :#{[formatted, plural_route_part, suffix].compact.join('_')}
-          END
+    target.resources.each do |resource|
+      if target.resources.first != resource
+        [nil, 'formatted'].each do |formatted|
+          ['path', 'url'].each do |suffix|
+            route_part = target.route_part_for_resource(resource)
+            plural_route_part = target.plural_route_part_for_resource(resource)
+            item_optional = ' = nil' unless resource == target.controller_resource
+            target.module_eval(<<-END)
+              def #{[formatted, route_part, suffix].compact.join('_')}(item#{ item_optional }, *args)
+                if item.is_a? Hash
+                  args = [item]
+                  item = nil
+                end
+                item ||= self.#{ target.finder_method_name_for_resource(resource) }
+                generate_url(#{formatted.inspect}, nil, '#{route_part}', '#{suffix}', '#{ resource }', item, args)
+              end
+              helper_method :#{[formatted, route_part, suffix].compact.join('_')}
+              protected :#{[formatted, route_part, suffix].compact.join('_')}
+
+              def #{[formatted, 'edit', route_part, suffix].compact.join('_')}(item#{ item_optional }, *args)
+                if item.is_a? Hash
+                  args = [item]
+                  item = nil
+                end
+                item ||= self.#{ target.finder_method_name_for_resource(resource) }
+                generate_url(#{formatted.inspect}, 'edit', '#{route_part}', '#{suffix}', '#{ resource }', item, args)
+              end
+              helper_method :#{[formatted, 'edit', route_part, suffix].compact.join('_')}
+              protected :#{[formatted, 'edit', route_part, suffix].compact.join('_')}
+
+              def #{[formatted, 'new', route_part, suffix].compact.join('_')}(*args)
+                generate_url(#{formatted.inspect}, 'new', '#{route_part}', '#{suffix}', '#{ resource }', nil, args)
+              end
+              helper_method :#{[formatted, 'new', route_part, suffix].compact.join('_')}
+              protected :#{[formatted, 'new', route_part, suffix].compact.join('_')}
+
+              def #{[formatted, plural_route_part, suffix].compact.join('_')}(*args)
+                generate_url(#{formatted.inspect}, nil, '#{plural_route_part}', '#{suffix}', '#{ resource }', nil, args)
+              end
+              helper_method :#{[formatted, plural_route_part, suffix].compact.join('_')}
+              protected :#{[formatted, plural_route_part, suffix].compact.join('_')}
+            END
+          end
         end
       end
     end
@@ -327,12 +343,14 @@ module AutomaticResources
     end
   end
 
-  def generate_url(formatted, prefix, name, suffix, item, extra_args)
-    parts = active_resources[0...-1]
+  def generate_url(formatted, prefix, name, suffix, resource, item, extra_args)
+    index = active_resources.index(resource)
+    raise "A route was called for #{ resource }, but #{ resource } is not currently active." unless index
+    parts = active_resources[0...index]
     bypass = parts.empty?
     parts = parts.map { |r| self.class.route_part_for_resource(r) }
     method = [formatted, prefix, parts, name, suffix].flatten.compact.join('_')
-    args = active_resources[0...-1].map do |r| 
+    args = active_resources[0...index].map do |r| 
       send(self.class.finder_method_name_for_resource(r))
     end
     args.push item if item
