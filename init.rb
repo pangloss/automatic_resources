@@ -306,7 +306,7 @@ module AutomaticResources
   end
 
   def parent
-    object(parent_resource)
+    object(parent_resource) if parent_resource
   end
 
   def object(resource)
