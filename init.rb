@@ -347,7 +347,6 @@ module AutomaticResources
     index = active_resources.index(resource)
     raise "A route was called for #{ resource }, but #{ resource } is not currently active." unless index
     parts = active_resources[0...index]
-    bypass = parts.empty?
     parts = parts.map { |r| self.class.route_part_for_resource(r) }
     method = [formatted, prefix, parts, name, suffix].flatten.compact.join('_')
     args = active_resources[0...index].map do |r| 
@@ -355,15 +354,7 @@ module AutomaticResources
     end
     args.push item if item
     args = args + extra_args unless extra_args.blank?
-    if bypass
-      # This only happens if we have no parent resources. It's basically just
-      # bypassing the original named url (because it's been overwritten)
-      opts = args.extract_options!
-      opts[:id] = args.to_param unless args.empty?
-      url_for(send("hash_for_#{ method }", opts))
-    else
-      send(method, *args)
-    end
+    send(method, *args)
   end
 
 end
